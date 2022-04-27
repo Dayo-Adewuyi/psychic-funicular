@@ -39,18 +39,29 @@ export const AppContextProvider = ({ children }) => {
       }
     }
 
-    const getCandidates = async() =>{
+    const getAllCandidates = async() =>{
       const contract = createEthereumContract();
 
       try {
-        let result = await contract.getCandidates();
+         await contract.getCandidates();
+        
                   }
       catch(error){
         alert(error)
       
       }
     }
-
+    const candidateCount = async() => {
+      const contract = createEthereumContract();
+      try {
+        await contract.candidatesCount();
+       
+                 }
+     catch(error){
+       alert(error)
+     
+     }
+    }
     const setUpElection = async(prop, candidateNames) =>{
       const contract = createEthereumContract();
 
@@ -253,6 +264,6 @@ export const AppContextProvider = ({ children }) => {
 
     return (
         <AppContext.Provider value={{ currentAccount,
-            connectWallet, getCandidates, setUpElection, makeResultsPublic,  getProof,vote, startElection,endElection,removeTeacher,addTeacher,changeChairman,pauseContract, unPauseContract, isStudent }}>{ children }</AppContext.Provider>
+            connectWallet, candidateCount, getAllCandidates, setUpElection, makeResultsPublic,  getProof,vote, startElection,endElection,removeTeacher,addTeacher,changeChairman,pauseContract, unPauseContract, isStudent }}>{ children }</AppContext.Provider>
     );
 };

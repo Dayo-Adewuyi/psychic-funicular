@@ -20,7 +20,7 @@ import { getProviderInfoFromChecksArray } from "web3modal";
 const Election = () => {
   const classes = useStyles();
   const globalStyles = useGlobalStyles();
-  const { currentAccount, connectWallet , isStudent , getProof , getCandidates, vote, startElection, endElection} = useContext(AppContext);
+  const { currentAccount, connectWallet , isStudent , getProof , getAllCandidates,candidateCount,  vote, startElection, endElection} = useContext(AppContext);
   const [candidateId, setCandidateId] = useState(0)
   const [show, setShow] = useState(false);
   const[contenders, setContenders] = useState([]);
@@ -50,16 +50,28 @@ buttons: [
   
   const fetch =async()=>{
    
+    let candidateArray = []
 
-    const contestants = await getCandidates()
-    setContenders(contestants)
-  console.log(contestants)
+    const candCount = await candidateCount()
+    for(var i=1; i<= candCount; i++){
+      const result = await getAllCandidates()
+      console.log(result)
+      candidateArray.push(result)
+    }
+    setContenders(candidateArray)
+
+     
      } 
+
+     const start = async() =>{
+      await startElection()
+
+        }
   
-     useEffect(()=>{
-      fetch()
-     })
-  
+     
+        useEffect(()=>{
+          fetch()
+         },[])
 
   return (
     <main>
@@ -101,11 +113,14 @@ buttons: [
           <div className="container">
             <div className="row">
               <div className="d-flex justify-content-end">
-                <button className="btn btn-lg btn-success me-2">
+                <button className="btn btn-lg btn-success me-2" onClick={start}>
                   Start Election
                 </button>
                 <button className="btn btn-lg btn-danger me-2">
                   End Election
+                </button>
+                <button className="btn btn-lg btn-danger me-2" onClick={fetch}>
+                  Get Candidates
                 </button>
                 <button className="btn btn-lg btn-primary me-2">
                   Make Public
@@ -116,8 +131,10 @@ buttons: [
               </div>
             </div>
 
-
-            <div className="row">
+          {
+            contenders.map((cand)=>{
+              return(
+                <div className="row">
             
                 <div className="col-4">
                 <div className="card">
@@ -127,9 +144,9 @@ buttons: [
                     alt="..."
                   />
                   <div className="card-body">
-                    <h5 className="card-title"></h5>
-                    <span className="display-2"></span>
-                    <small>votes</small>
+                    <h5 className="card-title"> NAME: {cand.name}</h5>
+                    <span className="display-2">VOTECOUNT: {cand.count}</span>
+                    <small>ID: {cand.id}</small>
                     <br></br>
                     <button
                       className="btn btn-primary btn-lg m-1 px-1"
@@ -148,6 +165,10 @@ buttons: [
               </div>
               
             </div>
+              )
+            })
+          }
+            
           </div>
         ) : (
           <div className="container">

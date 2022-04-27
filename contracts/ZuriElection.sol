@@ -11,14 +11,12 @@ import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 /// @dev All function calls are currently implemented without side effects
 contract ZuriElection is Pausable {
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor(bytes32 merkleRoot) {
+    constructor() {
         chairman = msg.sender;
         Active = false;
         Ended = false;
-        Created = false;
         candidatesCount = 0;
-        root = merkleRoot;
-        publicState = false;
+        
     }
 
     /// =================== VARIABLES ================================
@@ -64,24 +62,18 @@ contract ZuriElection is Pausable {
     ///@notice boolean to track status of election
     bool public Ended;
 
-    ///@notice boolean to track if election has been created
-    bool public Created;
-
-    ///@notice boolean to keep track of whether result should be public or not
-    bool internal publicState;
-
     ///@dev struct of candidates with variables to track name , id and voteCount
     struct Candidate {
         uint256 id;
         string name;
-        string candidateHash;
-        string candidateManifesto;
         uint256 voteCount;
     }
+    Candidate[] cands; 
 
     
     ///================== PUBLIC FUNCTIONS =============================
 
+    ///@notice function that return list of candidates
     function getCandidates() public view  returns (Candidate[] memory) {
         Candidate[] memory id = new Candidate[] (candidatesCount);
         for(uint i=0; i < candidatesCount; i++){
@@ -91,7 +83,9 @@ contract ZuriElection is Pausable {
         }
         return id;
     }
-
+        function getCands() public view returns (Candidate[] memory) {
+            return cands;
+        }
     ///@notice function that allows stakeholders vote in an election
     ///@param _candidateId the ID of the candidate and hexProof of the voting address
     ///@dev function verifies proof
@@ -110,12 +104,12 @@ contract ZuriElection is Pausable {
 
     /// @notice function to start an election
     ///@param _prop which is an array of election information
-    function setUpElection(string[] memory _prop)
+    function setUpElection(string[] memory _prop, string[] memory _candidates)
         public
         whenNotPaused
     {
-        require(!Active, "Election is Ongoing");
-        require(_prop.length > 0, "atleast one person should contest");
+
+        require(_candidates.length > 0, "atleast one person should contest");
         require(
             chairman == msg.sender || teachers[msg.sender] == true,
             "only teachers/chairman can call this function"
@@ -124,26 +118,22 @@ contract ZuriElection is Pausable {
 
         position = _prop[0];
         description = _prop[1];
-        Created = true;
+        for (uint256 i = 0; i < _candidates.length; i++) {
+            _addCandidate(_candidates[i]);
+        }
     }
 
     function makeResultPublic()
         public
+        view
+        returns (uint256, uint256[] memory)
     {
-        require(Ended, "Sorry, the Election has not ended");
         require(
             chairman == msg.sender || teachers[msg.sender] == true,
             "only teachers/chairman can make results public"
         );
-        publicState = true;
-    }
-
-    function getWinner() public view  returns (uint256, uint256[] memory){
-        require(publicState, "The Results must be made public");
         return (winnerVoteCount, winnerIds);
     }
-
-    
 
     /// ==================== INTERNAL FUNCTIONS ================================
     ///@notice internal function that allows users vote
@@ -164,19 +154,17 @@ contract ZuriElection is Pausable {
     ///@notice internal function to add candidate to election
     ///@param _name of candidate
     ///@dev function creates a struct of candidates
-    function addCandidate(string memory _name, string memory _candidateHash, string memory _candidateManifesto) public whenNotPaused {
-        require(!Active, "Election is Ongoing");
-        require(
-            chairman == msg.sender || teachers[msg.sender] == true,
-            "only teachers/chairman can call this function"
-        );
+    function _addCandidate(string memory _name) internal whenNotPaused {
         candidates[candidatesCount] = Candidate({
             id: candidatesCount,
             name: _name,
-            candidateHash : _candidateHash,
-            candidateManifesto : _candidateManifesto,
             voteCount: 0
         });
+        cands.push(Candidate({
+            id: candidatesCount,
+            name: _name,
+            voteCount: 0
+        }));
         emit CandidateCreated(candidatesCount, _name);
         candidatesCount++;
     }
@@ -273,45 +261,6 @@ contract ZuriElection is Pausable {
         chairman = _newChairman;
     }
 
-    ///@notice function to close the election
-    function closeElection() public onlyChairman{
-        Created = false;
-         chairman = msg.sender;
-        Active = false;
-        Ended = false;
-        Created = false;
-        candidatesCount = 0;
-        publicState = false;
-        delete winnerIds;
-        winnerVoteCount = 0;
-    }
-
-    ///@notice to check If election has been created
-    function isCreated() public view returns(bool){
-        return Created;
-    }
-
-    ///@notice function to check if election has been started
-    function isStarted() public view returns (bool){
-        return Active;
-    }
-
-    ///@notice function to check if election has been ended
-    function isEnded() public view returns (bool){
-        return Ended;
-    }
-
-    ///@notice function to check if addr is chairman
-    function isChairman() public view  returns (bool){
-        return chairman == msg.sender;
-    }
-
-    ///@notice function to check if election has been started
-    function isTeacher() public view  returns (bool){
-        return teachers[msg.sender];
-    }
-
-
     /// ======================= MODIFIERS =================================
     ///@notice modifier to specify only the chairman can call the function
     modifier onlyChairman() {
@@ -319,6 +268,12 @@ contract ZuriElection is Pausable {
         _;
     }
 
+    ///@notice modifier to specify only teachers can call the function
+    modifier onlyTeachers(address _user) {
+        bool Teachers = teachers[_user];
+        require(Teachers, "Only Teachers can call this function");
+        _;
+    }
     ///@notice modifier to specify that election has not ended
     modifier electionIsStillOn() {
         require(!Ended, "Sorry, the Election has ended!");
@@ -329,8 +284,6 @@ contract ZuriElection is Pausable {
         require(Active, "Please check back, the election has not started!");
         _;
     }
-
-    
     ///@notice modifier to ensure only specified candidate ID are voted for
     ///@param _candidateId of candidates
     modifier onlyValidCandidate(uint256 _candidateId) {

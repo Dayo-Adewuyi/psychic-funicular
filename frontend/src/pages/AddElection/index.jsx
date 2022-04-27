@@ -25,6 +25,7 @@ const AddElection = () => {
   const [description, setDescription] = useState(" ")
 
   const prop = [electionName, description]
+  console.log(candidateNames)
 
         console.log(prop)
 
